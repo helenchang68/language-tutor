@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LANGUAGES, LanguageCode } from "@/lib/languages";
 
 export async function POST(req: NextRequest) {
-  const { text } = await req.json();
+  const { text, language } = await req.json();
+
+  const config = LANGUAGES[language as LanguageCode];
+  if (!config) {
+    return NextResponse.json({ error: "Invalid language" }, { status: 400 });
+  }
 
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
@@ -13,8 +19,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         input: { text },
         voice: {
-          languageCode: "ko-KR",
-          name: "ko-KR-Neural2-B",
+          languageCode: config.ttsLanguageCode,
+          name: config.ttsVoiceName,
         },
         audioConfig: {
           audioEncoding: "MP3",
@@ -24,8 +30,6 @@ export async function POST(req: NextRequest) {
   );
 
   const data = await googleRes.json();
-
-  // Google 回傳的是 base64 編碼的音檔，要解碼成二進位
   const audioBuffer = Buffer.from(data.audioContent, "base64");
 
   return new NextResponse(audioBuffer, {
